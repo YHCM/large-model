@@ -1,0 +1,19 @@
+# 依赖
+node_modules/
+
+# pnpm 锁定文件
+pnpm-lock.yaml
+
+# 构建
+dist/
+
+# shadcn 组件
+components/ui/
+lib/
+
+# 配置文件
+tsconfig.json
+eslint.config.mjs
+next.config.ts
+postcss.config.mjs
+components.json
