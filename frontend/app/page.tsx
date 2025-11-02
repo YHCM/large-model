@@ -226,125 +226,129 @@ const Example = () => {
   }, [])
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border bg-background shadow-sm">
-      {/* 头部 */}
-      <div className="flex items-center justify-between border-b bg-muted/50 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="size-2 rounded-full bg-green-500" />
-            <span className="font-medium text-sm">AI Assistant</span>
-          </div>
-          <div className="h-4 w-px bg-border" />
-          <span className="text-muted-foreground text-xs">
-            {models.find((m) => m.id === selectedModel)?.name}
-          </span>
-        </div>
-        <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 px-2">
-          <RotateCcwIcon className="size-4" />
-          <span className="ml-1">Reset</span>
-        </Button>
-      </div>
-
-      {/* 对话区域 */}
-      <Conversation className="flex-1">
-        <ConversationContent className="space-y-4">
-          {messages.map((message) => (
-            <div key={message.id} className="space-y-3">
-              <Message from={message.role}>
-                <MessageContent>
-                  {message.isStreaming && message.content === '' ? (
-                    <div className="flex items-center gap-2">
-                      <Loader size={14} />
-                      <span className="text-muted-foreground text-sm">Thinking...</span>
-                    </div>
-                  ) : message.role === 'assistant' ? (
-                    // 对于AI消息，使用Response组件进行Markdown渲染
-                    <Response>{message.content}</Response>
-                  ) : (
-                    // 对于用户消息，直接显示文本
-                    message.content
-                  )}
-                </MessageContent>
-                <MessageAvatar
-                  src={
-                    message.role === 'user'
-                      ? 'https://github.com/dovazencot.png'
-                      : 'https://github.com/vercel.png'
-                  }
-                  name={message.role === 'user' ? 'User' : 'AI'}
-                />
-              </Message>
-
-              {/* 推理过程 */}
-              {message.reasoning && (
-                <div className="ml-10">
-                  <Reasoning isStreaming={message.isStreaming} defaultOpen={false}>
-                    <ReasoningTrigger />
-                    <ReasoningContent>{message.reasoning}</ReasoningContent>
-                  </Reasoning>
-                </div>
-              )}
-
-              {/* 来源 */}
-              {message.sources && message.sources.length > 0 && (
-                <div className="ml-10">
-                  <Sources>
-                    <SourcesTrigger count={message.sources.length} />
-                    <SourcesContent>
-                      {message.sources.map((source, index) => (
-                        <Source key={index} href={source.url} title={source.title} />
-                      ))}
-                    </SourcesContent>
-                  </Sources>
-                </div>
-              )}
+    <div className="fixed inset-0 m-4 overflow-hidden">
+      <div className="flex h-full w-full flex-col rounded-xl border bg-background shadow-lg">
+        <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border bg-background shadow-sm">
+          {/* 头部 */}
+          <div className="flex items-center justify-between border-b bg-muted/50 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="size-2 rounded-full bg-green-500" />
+                <span className="font-medium text-sm">AI Assistant</span>
+              </div>
+              <div className="h-4 w-px bg-border" />
+              <span className="text-muted-foreground text-xs">
+                {models.find((m) => m.id === selectedModel)?.name}
+              </span>
             </div>
-          ))}
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
+            <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 px-2">
+              <RotateCcwIcon className="size-4" />
+              <span className="ml-1">Reset</span>
+            </Button>
+          </div>
 
-      {/* 输入区域 */}
-      <div className="border-t p-4">
-        <PromptInput onSubmit={handleSubmit}>
-          <PromptInputTextarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask me anything about development, coding, or technology..."
-            disabled={isTyping}
-          />
-          <PromptInputToolbar>
-            <PromptInputTools>
-              <PromptInputButton disabled={isTyping}>
-                <PaperclipIcon size={16} />
-              </PromptInputButton>
-              <PromptInputButton disabled={isTyping}>
-                <MicIcon size={16} />
-                <span>Voice</span>
-              </PromptInputButton>
-              <PromptInputModelSelect
-                value={selectedModel}
-                onValueChange={setSelectedModel}
+          {/* 对话区域 */}
+          <Conversation className="flex-1">
+            <ConversationContent className="space-y-4">
+              {messages.map((message) => (
+                <div key={message.id} className="space-y-3">
+                  <Message from={message.role}>
+                    <MessageContent>
+                      {message.isStreaming && message.content === '' ? (
+                        <div className="flex items-center gap-2">
+                          <Loader size={14} />
+                          <span className="text-muted-foreground text-sm">Thinking...</span>
+                        </div>
+                      ) : message.role === 'assistant' ? (
+                        // 对于AI消息，使用Response组件进行Markdown渲染
+                        <Response>{message.content}</Response>
+                      ) : (
+                        // 对于用户消息，直接显示文本
+                        message.content
+                      )}
+                    </MessageContent>
+                    <MessageAvatar
+                      src={
+                        message.role === 'user'
+                          ? 'https://github.com/dovazencot.png'
+                          : 'https://github.com/vercel.png'
+                      }
+                      name={message.role === 'user' ? 'User' : 'AI'}
+                    />
+                  </Message>
+
+                  {/* 推理过程 */}
+                  {message.reasoning && (
+                    <div className="ml-10">
+                      <Reasoning isStreaming={message.isStreaming} defaultOpen={false}>
+                        <ReasoningTrigger />
+                        <ReasoningContent>{message.reasoning}</ReasoningContent>
+                      </Reasoning>
+                    </div>
+                  )}
+
+                  {/* 来源 */}
+                  {message.sources && message.sources.length > 0 && (
+                    <div className="ml-10">
+                      <Sources>
+                        <SourcesTrigger count={message.sources.length} />
+                        <SourcesContent>
+                          {message.sources.map((source, index) => (
+                            <Source key={index} href={source.url} title={source.title} />
+                          ))}
+                        </SourcesContent>
+                      </Sources>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+
+          {/* 输入区域 */}
+          <div className="border-t p-4">
+            <PromptInput onSubmit={handleSubmit}>
+              <PromptInputTextarea
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Ask me anything about development, coding, or technology..."
                 disabled={isTyping}
-              >
-                <PromptInputModelSelectTrigger>
-                  <PromptInputModelSelectValue />
-                </PromptInputModelSelectTrigger>
-                <PromptInputModelSelectContent>
-                  {models.map((model) => (
-                    <PromptInputModelSelectItem key={model.id} value={model.id}>
-                      {model.name}
-                    </PromptInputModelSelectItem>
-                  ))}
-                </PromptInputModelSelectContent>
-              </PromptInputModelSelect>
-            </PromptInputTools>
-            <PromptInputSubmit
-              disabled={!inputValue.trim() || isTyping}
-              status={isTyping ? 'streaming' : 'ready'}
-            />
-          </PromptInputToolbar>
-        </PromptInput>
+              />
+              <PromptInputToolbar>
+                <PromptInputTools>
+                  <PromptInputButton disabled={isTyping}>
+                    <PaperclipIcon size={16} />
+                  </PromptInputButton>
+                  <PromptInputButton disabled={isTyping}>
+                    <MicIcon size={16} />
+                    <span>Voice</span>
+                  </PromptInputButton>
+                  <PromptInputModelSelect
+                    value={selectedModel}
+                    onValueChange={setSelectedModel}
+                    disabled={isTyping}
+                  >
+                    <PromptInputModelSelectTrigger>
+                      <PromptInputModelSelectValue />
+                    </PromptInputModelSelectTrigger>
+                    <PromptInputModelSelectContent>
+                      {models.map((model) => (
+                        <PromptInputModelSelectItem key={model.id} value={model.id}>
+                          {model.name}
+                        </PromptInputModelSelectItem>
+                      ))}
+                    </PromptInputModelSelectContent>
+                  </PromptInputModelSelect>
+                </PromptInputTools>
+                <PromptInputSubmit
+                  disabled={!inputValue.trim() || isTyping}
+                  status={isTyping ? 'streaming' : 'ready'}
+                />
+              </PromptInputToolbar>
+            </PromptInput>
+          </div>
+        </div>
       </div>
     </div>
   )
