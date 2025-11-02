@@ -33,9 +33,9 @@ def get_models():
     try:
         # 调用ollama.list()获取模型列表
         models = ollama.list()
-        # 提取模型名称（格式为 "模型名:版本"，这里简化为只取模型名）
+        # 提取模型名称
         model_names = [
-            model["name"].split(":")[0] for model in models.get("models", [])
+            model["model"].split(":")[0] for model in models.get("models", [])
         ]
         return {"models": model_names}
     except Exception as e:
