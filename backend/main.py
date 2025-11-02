@@ -18,15 +18,18 @@ FIXED_RESPONSE = {
     "systemPrompt": "选择的对话风格提示词",
     "history": [
         {"role": "user", "content": "历史消息1"},
-        {"role": "assistant", "content": "历史消息2"}
-    ]
+        {"role": "assistant", "content": "历史消息2"},
+    ],
 }
+
 
 @app.post("/chat")
 async def chat():
     """接收聊天请求并返回固定的JSON响应"""
     return FIXED_RESPONSE
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
