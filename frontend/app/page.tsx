@@ -79,7 +79,7 @@ const Example = () => {
   const [error, setError] = useState<string | null>(null)
   
   // 新增：是否显示思考过程的开关
-  const [showReasoning, setShowReasoning] = useState(false);
+  const [showReasoning, setShowReasoning] = useState(true);
   
   // 新增：风格选择相关
   const [styles, setStyles] = useState<Style[]>([
@@ -283,15 +283,15 @@ const Example = () => {
               </PromptInputModelSelectContent>
             </PromptInputModelSelect>
             
-            {/* 新增：是否显示思考过程的开关 */}
-            <div className="flex items-center gap-2">
+            {/* 是否显示思考过程的开关 */}
+            {/* <div className="flex items-center gap-2">
               <span className="text-xs">显示思考过程</span>
               <Switch
                 checked={showReasoning}
                 onCheckedChange={setShowReasoning}
                 disabled={isTyping}
               />
-            </div>
+            </div> */}
             
             <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 px-2">
               <RotateCcwIcon className="size-4" />
