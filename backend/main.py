@@ -34,9 +34,7 @@ def get_models():
         # 调用ollama.list()获取模型列表
         models = ollama.list()
         # 提取模型名称
-        model_names = [
-            model["model"] for model in models.get("models", [])
-        ]
+        model_names = [model["model"] for model in models.get("models", [])]
         return {"models": model_names}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取模型列表失败: {str(e)}")
