@@ -30,13 +30,14 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from '@/components/ui/shadcn-io/ai/source'
-import { Response } from '@/components/ui/shadcn-io/ai/response' // 导入Response组件用于Markdown渲染
+import { Response } from '@/components/ui/shadcn-io/ai/response'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { MicIcon, PaperclipIcon, RotateCcwIcon } from 'lucide-react'
+import { MicIcon, PaperclipIcon, RotateCcwIcon, AlertCircleIcon } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { type FormEventHandler, useCallback, useEffect, useState } from 'react'
 
+// 定义消息类型
 type ChatMessage = {
   id: string
   content: string
@@ -47,126 +48,139 @@ type ChatMessage = {
   isStreaming?: boolean
 }
 
-const models = [
-  { id: 'gpt-4o', name: 'GPT-4o' },
-  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-  { id: 'llama-3.1-70b', name: 'Llama 3.1 70B' },
-]
-
-const sampleResponses = [
-  {
-    content: `## Ollama API 响应格式
-
-Ollama API 使用流式响应，返回 JSON 对象包含以下字段：
-
-**模型响应字段：**
-- \`model\` - 使用的模型名称
-- \`created_at\` - 创建时间戳
-- \`message\` - 消息对象
-- \`done\` - 是否完成流式传输
-
-**流式响应示例：**
-\`\`\`json
-{
-  "model": "llama2",
-  "created_at": "2023-08-04T08:52:19.385406455-07:00",
-  "message": {
-    "role": "assistant",
-    "content": "Hello! How can I help you today?"
-  },
-  "done": false
+// 定义模型类型
+type Model = {
+  id: string
+  name: string
 }
-\`\`\`
-
-**聊天完成请求：**
-\`\`\`bash
-curl -X POST http://localhost:11434/api/chat \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "model": "llama2",
-    "messages": [
-      {
-        "role": "user",
-        "content": "为什么天空是蓝色的？"
-      }
-    ],
-    "stream": true
-  }'
-\`\`\`
-
-> 注意：Ollama 默认使用流式传输，可以通过 \`stream: false\` 关闭。`,
-    reasoning:
-      '用户需要了解 Ollama API 的响应格式，我应该提供完整的 API 字段说明和实际使用示例，包括请求和响应的具体格式。',
-    sources: [
-      { title: 'Ollama API 文档', url: 'https://github.com/ollama/ollama/blob/main/docs/api.md' },
-      { title: 'Ollama 官方仓库', url: 'https://github.com/ollama/ollama' },
-    ],
-  },
-]
 
 const Example = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: nanoid(),
-      content:
-        "Hello! I'm your AI assistant. I can help you with coding questions, explain concepts, and provide guidance on web development topics. What would you like to know?",
+      content: '你好！我是你的AI助手，有什么可以帮助你的吗？',
       role: 'assistant',
       timestamp: new Date(),
-      sources: [
-        { title: 'Getting Started Guide', url: '#' },
-        { title: 'API Documentation', url: '#' },
-      ],
     },
   ])
-
   const [inputValue, setInputValue] = useState('')
-  const [selectedModel, setSelectedModel] = useState(models[0].id)
+  const [models, setModels] = useState<Model[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>('')
   const [isTyping, setIsTyping] = useState(false)
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const simulateTyping = useCallback(
-    (
-      messageId: string,
-      content: string,
-      reasoning?: string,
-      sources?: Array<{ title: string; url: string }>,
-    ) => {
-      let currentIndex = 0
-      const typeInterval = setInterval(() => {
+  // 加载可用模型列表
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await fetch('/api/models')
+        if (!response.ok) {
+          throw new Error('获取模型列表失败')
+        }
+        const data = await response.json()
+        // 转换为 {id, name} 格式
+        console.log('API返回原始数据:', data) // 确认是 {"models":["qwen3","llama3","deepseek-r1"]}
+        const modelList = data.models.map((model: string) => ({
+          id: model,
+          name: model,
+        }))
+        console.log('转换后的模型列表:', modelList) // 应该是 [{id: 'qwen3', name: 'qwen3'}, ...]
+        setModels(modelList)
+        if (modelList.length > 0) {
+          setSelectedModel(modelList[0].id)
+          console.log('设置默认模型:', modelList[0].id) // 确认执行了这行
+        }
+        setModels(modelList)
+        // 默认选择第一个模型
+        if (modelList.length > 0) {
+          setSelectedModel(modelList[0].id)
+        }
+      } catch (err) {
+        console.error('加载模型失败:', err)
+        setError('无法连接到后端服务，请检查服务是否启动')
+      }
+    }
+
+    fetchModels()
+  }, [])
+
+  // 处理真实API调用
+  const sendMessage = useCallback(
+    async (userMessage: ChatMessage) => {
+      try {
+        // 准备历史记录
+        const history = messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }))
+
+        // 创建AI消息占位符
+        const assistantMessageId = nanoid()
+        const assistantMessage: ChatMessage = {
+          id: assistantMessageId,
+          content: '',
+          role: 'assistant',
+          timestamp: new Date(),
+          isStreaming: true,
+        }
+        setMessages((prev) => [...prev, assistantMessage])
+        setStreamingMessageId(assistantMessageId)
+
+        // 调用后端API
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            message: userMessage.content,
+            history: history,
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.detail || '请求失败')
+        }
+
+        const data = await response.json()
+
+        // 更新AI消息
         setMessages((prev) =>
           prev.map((msg) => {
-            if (msg.id === messageId) {
-              const currentContent = content.slice(0, currentIndex)
+            if (msg.id === assistantMessageId) {
               return {
                 ...msg,
-                content: currentContent,
-                isStreaming: currentIndex < content.length,
-                reasoning: currentIndex >= content.length ? reasoning : undefined,
-                sources: currentIndex >= content.length ? sources : undefined,
+                content: data.response,
+                isStreaming: false,
               }
             }
             return msg
           }),
         )
-        currentIndex += Math.random() > 0.1 ? 1 : 0 // 模拟不同的打字速度
-
-        if (currentIndex >= content.length) {
-          clearInterval(typeInterval)
-          setIsTyping(false)
-          setStreamingMessageId(null)
-        }
-      }, 50)
-      return () => clearInterval(typeInterval)
+      } catch (err) {
+        console.error('发送消息失败:', err)
+        setError(err instanceof Error ? err.message : '发送消息时发生错误')
+        // 移除未完成的AI消息
+        setMessages((prev) => prev.filter((msg) => !msg.isStreaming))
+      } finally {
+        setIsTyping(false)
+        setStreamingMessageId(null)
+      }
     },
-    [],
+    [messages, selectedModel],
   )
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = useCallback(
     (event) => {
       event.preventDefault()
 
-      if (!inputValue.trim() || isTyping) return
+      if (!inputValue.trim() || isTyping || !selectedModel) return
+
+      // 清除错误信息
+      setError(null)
 
       // 添加用户消息
       const userMessage: ChatMessage = {
@@ -179,50 +193,25 @@ const Example = () => {
       setInputValue('')
       setIsTyping(true)
 
-      // 模拟AI响应延迟
-      setTimeout(() => {
-        const responseData = sampleResponses[Math.floor(Math.random() * sampleResponses.length)]
-        const assistantMessageId = nanoid()
-
-        const assistantMessage: ChatMessage = {
-          id: assistantMessageId,
-          content: '',
-          role: 'assistant',
-          timestamp: new Date(),
-          isStreaming: true,
-        }
-        setMessages((prev) => [...prev, assistantMessage])
-        setStreamingMessageId(assistantMessageId)
-
-        // 开始模拟打字效果
-        simulateTyping(
-          assistantMessageId,
-          responseData.content,
-          responseData.reasoning,
-          responseData.sources,
-        )
-      }, 800)
+      // 发送消息到后端
+      sendMessage(userMessage)
     },
-    [inputValue, isTyping, simulateTyping],
+    [inputValue, isTyping, selectedModel, sendMessage],
   )
 
   const handleReset = useCallback(() => {
     setMessages([
       {
         id: nanoid(),
-        content:
-          "Hello! I'm your AI assistant. I can help you with coding questions, explain concepts, and provide guidance on web development topics. What would you like to know?",
+        content: '你好！我是你的AI助手，有什么可以帮助你的吗？',
         role: 'assistant',
         timestamp: new Date(),
-        sources: [
-          { title: 'Getting Started Guide', url: '#' },
-          { title: 'API Documentation', url: '#' },
-        ],
       },
     ])
     setInputValue('')
     setIsTyping(false)
     setStreamingMessageId(null)
+    setError(null)
   }, [])
 
   return (
@@ -238,14 +227,22 @@ const Example = () => {
               </div>
               <div className="h-4 w-px bg-border" />
               <span className="text-muted-foreground text-xs">
-                {models.find((m) => m.id === selectedModel)?.name}
+                {models.find(m => m.id === selectedModel)?.name || '加载中...'}
               </span>
             </div>
             <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 px-2">
               <RotateCcwIcon className="size-4" />
-              <span className="ml-1">Reset</span>
+              <span className="ml-1">重置对话</span>
             </Button>
           </div>
+
+          {/* 错误提示 */}
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 flex items-center">
+              <AlertCircleIcon className="w-4 h-4 mr-2" />
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
 
           {/* 对话区域 */}
           <Conversation className="flex-1">
@@ -257,23 +254,21 @@ const Example = () => {
                       {message.isStreaming && message.content === '' ? (
                         <div className="flex items-center gap-2">
                           <Loader size={14} />
-                          <span className="text-muted-foreground text-sm">Thinking...</span>
+                          <span className="text-muted-foreground text-sm">思考中...</span>
                         </div>
                       ) : message.role === 'assistant' ? (
-                        // 对于AI消息，使用Response组件进行Markdown渲染
                         <Response>{message.content}</Response>
                       ) : (
-                        // 对于用户消息，直接显示文本
                         message.content
                       )}
                     </MessageContent>
                     <MessageAvatar
                       src={
                         message.role === 'user'
-                          ? 'https://github.com/dovazencot.png'
-                          : 'https://github.com/vercel.png'
+                          ? 'https://picsum.photos/id/1005/200'
+                          : 'https://picsum.photos/id/1001/200'
                       }
-                      name={message.role === 'user' ? 'User' : 'AI'}
+                      name={message.role === 'user' ? '用户' : 'AI'}
                     />
                   </Message>
 
@@ -312,17 +307,17 @@ const Example = () => {
               <PromptInputTextarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask me anything about development, coding, or technology..."
-                disabled={isTyping}
+                placeholder="请输入你的问题..."
+                disabled={isTyping || !selectedModel}
               />
               <PromptInputToolbar>
                 <PromptInputTools>
-                  <PromptInputButton disabled={isTyping}>
+                  <PromptInputButton disabled={isTyping || !selectedModel}>
                     <PaperclipIcon size={16} />
                   </PromptInputButton>
-                  <PromptInputButton disabled={isTyping}>
+                  <PromptInputButton disabled={isTyping || !selectedModel}>
                     <MicIcon size={16} />
-                    <span>Voice</span>
+                    <span>语音</span>
                   </PromptInputButton>
                   <PromptInputModelSelect
                     value={selectedModel}
@@ -330,7 +325,10 @@ const Example = () => {
                     disabled={isTyping}
                   >
                     <PromptInputModelSelectTrigger>
-                      <PromptInputModelSelectValue />
+                      {/* 直接显示选中的模型名称 */}
+                      <span>
+                        {models.find(m => m.id === selectedModel)?.name || '选择模型'}
+                      </span>
                     </PromptInputModelSelectTrigger>
                     <PromptInputModelSelectContent>
                       {models.map((model) => (
@@ -342,7 +340,7 @@ const Example = () => {
                   </PromptInputModelSelect>
                 </PromptInputTools>
                 <PromptInputSubmit
-                  disabled={!inputValue.trim() || isTyping}
+                  disabled={!inputValue.trim() || isTyping || !selectedModel}
                   status={isTyping ? 'streaming' : 'ready'}
                 />
               </PromptInputToolbar>
