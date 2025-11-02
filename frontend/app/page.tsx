@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/shadcn-io/ai/source'
 import { Response } from '@/components/ui/shadcn-io/ai/response'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { AlertCircleIcon, MicIcon, PaperclipIcon, RotateCcwIcon } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { type FormEventHandler, useCallback, useEffect, useState } from 'react'
@@ -53,6 +54,13 @@ type Model = {
   name: string
 }
 
+// 定义风格类型
+type Style = {
+  id: string
+  name: string
+  prompt: string // 风格对应的提示词
+}
+
 const Example = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -69,6 +77,20 @@ const Example = () => {
   const [isTyping, setIsTyping] = useState(false)
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  
+  // 新增：是否显示思考过程的开关
+  const [showReasoning, setShowReasoning] = useState(false);
+  
+  // 新增：风格选择相关
+  const [styles, setStyles] = useState<Style[]>([
+    { id: 'default', name: '默认', prompt: '请自然地回答问题' },
+    { id: 'professional', name: '专业', prompt: '请用专业、正式的语言回答，使用行业术语' },
+    { id: 'casual', name: '随意', prompt: '请用轻松、随意的口语化方式回答' },
+    { id: 'detailed', name: '详细', prompt: '请提供详细、全面的回答，包含尽可能多的信息' },
+    { id: 'concise', name: '简洁', prompt: '请用简洁明了的语言回答，只说重点' },
+    { id: 'humorous', name: '幽默', prompt: '请用幽默风趣的方式回答，适当加入玩笑' },
+  ]);
+  const [selectedStyle, setSelectedStyle] = useState<string>('default');
 
   // 加载可用模型列表
   useEffect(() => {
@@ -117,6 +139,12 @@ const Example = () => {
       }
 
       try {
+        // 获取当前选择的风格提示词
+        const stylePrompt = styles.find(style => style.id === selectedStyle)?.prompt || '';
+        
+        // 构建带有风格提示的用户消息
+        const styledMessage = `${stylePrompt}\n\n用户的问题：${userMessage.content}`;
+
         const history = messages.map((msg) => ({
           role: msg.role,
           content: msg.content,
@@ -129,6 +157,7 @@ const Example = () => {
           role: 'assistant',
           timestamp: new Date(),
           isStreaming: true,
+          reasoning: showReasoning ? '' : undefined // 根据开关决定是否包含思考字段
         }
         setMessages((prev) => [...prev, assistantMessage])
         setStreamingMessageId(assistantMessageId)
@@ -140,8 +169,9 @@ const Example = () => {
           },
           body: JSON.stringify({
             model: selectedModel,
-            message: userMessage.content,
+            message: styledMessage, // 发送带风格的消息
             history: history,
+            showReasoning: showReasoning // 传递是否需要思考过程的参数
           }),
         })
 
@@ -158,6 +188,7 @@ const Example = () => {
               return {
                 ...msg,
                 content: data.response,
+                reasoning: showReasoning ? data.reasoning : undefined, // 设置思考过程
                 isStreaming: false,
               }
             }
@@ -173,7 +204,7 @@ const Example = () => {
         setStreamingMessageId(null)
       }
     },
-    [messages, selectedModel],
+    [messages, selectedModel, styles, selectedStyle, showReasoning], // 添加新的依赖
   )
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = useCallback(
@@ -212,6 +243,9 @@ const Example = () => {
     setIsTyping(false)
     setStreamingMessageId(null)
     setError(null)
+    // 重置风格和思考开关
+    setSelectedStyle('default')
+    setShowReasoning(false)
   }, [])
 
   return (
@@ -219,7 +253,7 @@ const Example = () => {
       <div className="flex h-full w-full flex-col rounded-xl border bg-background shadow-lg">
         <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border bg-background shadow-sm">
           {/* 头部 */}
-          <div className="flex items-center justify-between border-b bg-muted/50 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between border-b bg-muted/50 px-4 py-3 gap-2">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <div className="size-2 rounded-full bg-green-500" />
@@ -230,6 +264,35 @@ const Example = () => {
                 {models.find((m) => m.id === selectedModel)?.name || '加载中...'}
               </span>
             </div>
+            
+            {/* 新增：风格选择器 */}
+            <PromptInputModelSelect
+              value={selectedStyle}
+              onValueChange={setSelectedStyle}
+              disabled={isTyping}
+            >
+              <PromptInputModelSelectTrigger className="w-[140px]">
+                <PromptInputModelSelectValue placeholder="选择风格" />
+              </PromptInputModelSelectTrigger>
+              <PromptInputModelSelectContent>
+                {styles.map((style) => (
+                  <PromptInputModelSelectItem key={style.id} value={style.id}>
+                    {style.name}
+                  </PromptInputModelSelectItem>
+                ))}
+              </PromptInputModelSelectContent>
+            </PromptInputModelSelect>
+            
+            {/* 新增：是否显示思考过程的开关 */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs">显示思考过程</span>
+              <Switch
+                checked={showReasoning}
+                onCheckedChange={setShowReasoning}
+                disabled={isTyping}
+              />
+            </div>
+            
             <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 px-2">
               <RotateCcwIcon className="size-4" />
               <span className="ml-1">重置对话</span>
