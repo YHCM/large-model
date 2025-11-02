@@ -4,7 +4,7 @@ import ollama
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI(title="AI聊天后端（基于ollama-python）")
+app = FastAPI(title="AI聊天后端")
 
 
 # 数据模型定义

@@ -77,10 +77,10 @@ const Example = () => {
   const [isTyping, setIsTyping] = useState(false)
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  
+
   // 新增：是否显示思考过程的开关
-  const [showReasoning, setShowReasoning] = useState(true);
-  
+  const [showReasoning, setShowReasoning] = useState(true)
+
   // 新增：风格选择相关
   const [styles, setStyles] = useState<Style[]>([
     { id: 'default', name: '默认', prompt: '请自然地回答问题' },
@@ -89,8 +89,8 @@ const Example = () => {
     { id: 'detailed', name: '详细', prompt: '请提供详细、全面的回答，包含尽可能多的信息' },
     { id: 'concise', name: '简洁', prompt: '请用简洁明了的语言回答，只说重点' },
     { id: 'humorous', name: '幽默', prompt: '请用幽默风趣的方式回答，适当加入玩笑' },
-  ]);
-  const [selectedStyle, setSelectedStyle] = useState<string>('default');
+  ])
+  const [selectedStyle, setSelectedStyle] = useState<string>('default')
 
   // 加载可用模型列表
   useEffect(() => {
@@ -140,10 +140,10 @@ const Example = () => {
 
       try {
         // 获取当前选择的风格提示词
-        const stylePrompt = styles.find(style => style.id === selectedStyle)?.prompt || '';
-        
+        const stylePrompt = styles.find((style) => style.id === selectedStyle)?.prompt || ''
+
         // 构建带有风格提示的用户消息
-        const styledMessage = `${stylePrompt}\n\n用户的问题：${userMessage.content}`;
+        const styledMessage = `${stylePrompt}\n\n用户的问题：${userMessage.content}`
 
         const history = messages.map((msg) => ({
           role: msg.role,
@@ -157,7 +157,7 @@ const Example = () => {
           role: 'assistant',
           timestamp: new Date(),
           isStreaming: true,
-          reasoning: showReasoning ? '' : undefined // 根据开关决定是否包含思考字段
+          reasoning: showReasoning ? '' : undefined, // 根据开关决定是否包含思考字段
         }
         setMessages((prev) => [...prev, assistantMessage])
         setStreamingMessageId(assistantMessageId)
@@ -171,7 +171,7 @@ const Example = () => {
             model: selectedModel,
             message: styledMessage, // 发送带风格的消息
             history: history,
-            showReasoning: showReasoning // 传递是否需要思考过程的参数
+            showReasoning: showReasoning, // 传递是否需要思考过程的参数
           }),
         })
 
@@ -257,14 +257,15 @@ const Example = () => {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <div className="size-2 rounded-full bg-green-500" />
-                <span className="font-medium text-sm">AI Assistant</span>
+                {/* <span className="font-medium text-sm">AI Assistant</span> */}
+                <span className="font-medium text-sm">AI 助手</span>
               </div>
               <div className="h-4 w-px bg-border" />
               <span className="text-muted-foreground text-xs">
                 {models.find((m) => m.id === selectedModel)?.name || '加载中...'}
               </span>
             </div>
-            
+
             {/* 新增：风格选择器 */}
             <PromptInputModelSelect
               value={selectedStyle}
@@ -282,7 +283,7 @@ const Example = () => {
                 ))}
               </PromptInputModelSelectContent>
             </PromptInputModelSelect>
-            
+
             {/* 是否显示思考过程的开关 */}
             {/* <div className="flex items-center gap-2">
               <span className="text-xs">显示思考过程</span>
@@ -292,7 +293,7 @@ const Example = () => {
                 disabled={isTyping}
               />
             </div> */}
-            
+
             <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 px-2">
               <RotateCcwIcon className="size-4" />
               <span className="ml-1">重置对话</span>
