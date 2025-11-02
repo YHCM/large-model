@@ -32,8 +32,7 @@ import {
 } from '@/components/ui/shadcn-io/ai/source'
 import { Response } from '@/components/ui/shadcn-io/ai/response'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { MicIcon, PaperclipIcon, RotateCcwIcon, AlertCircleIcon } from 'lucide-react'
+import { AlertCircleIcon, MicIcon, PaperclipIcon, RotateCcwIcon } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { type FormEventHandler, useCallback, useEffect, useState } from 'react'
 
@@ -64,8 +63,9 @@ const Example = () => {
     },
   ])
   const [inputValue, setInputValue] = useState('')
-  const [models, setModels] = useState<Model[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>('')
+  // 先设置一个默认模型占位，确保初始有值
+  const [models, setModels] = useState<Model[]>([{ id: 'loading', name: '加载中...' }])
+  const [selectedModel, setSelectedModel] = useState<string>(models[0].id) // 初始就选中第一个
   const [isTyping, setIsTyping] = useState(false)
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -79,43 +79,49 @@ const Example = () => {
           throw new Error('获取模型列表失败')
         }
         const data = await response.json()
-        // 转换为 {id, name} 格式
-        console.log('API返回原始数据:', data) // 确认是 {"models":["qwen3","llama3","deepseek-r1"]}
         const modelList = data.models.map((model: string) => ({
           id: model,
           name: model,
         }))
-        console.log('转换后的模型列表:', modelList) // 应该是 [{id: 'qwen3', name: 'qwen3'}, ...]
+
+        // 模型加载成功后替换列表，并强制选中第一个
         setModels(modelList)
-        if (modelList.length > 0) {
-          setSelectedModel(modelList[0].id)
-          console.log('设置默认模型:', modelList[0].id) // 确认执行了这行
-        }
-        setModels(modelList)
-        // 默认选择第一个模型
-        if (modelList.length > 0) {
-          setSelectedModel(modelList[0].id)
-        }
+        setSelectedModel(modelList[0].id)
       } catch (err) {
         console.error('加载模型失败:', err)
         setError('无法连接到后端服务，请检查服务是否启动')
+        // 失败时使用预设模型
+        const fallbackModels = [{ id: 'default', name: '默认模型' }]
+        setModels(fallbackModels)
+        setSelectedModel(fallbackModels[0].id)
       }
     }
 
     fetchModels()
   }, [])
 
-  // 处理真实API调用
+  // 确保模型列表更新时，selectedModel始终有效
+  useEffect(() => {
+    if (models.length > 0 && !models.some((m) => m.id === selectedModel)) {
+      setSelectedModel(models[0].id)
+    }
+  }, [models, selectedModel])
+
+  // 处理消息发送
   const sendMessage = useCallback(
     async (userMessage: ChatMessage) => {
+      if (!selectedModel) {
+        setError('请等待模型加载完成')
+        setIsTyping(false)
+        return
+      }
+
       try {
-        // 准备历史记录
         const history = messages.map((msg) => ({
           role: msg.role,
           content: msg.content,
         }))
 
-        // 创建AI消息占位符
         const assistantMessageId = nanoid()
         const assistantMessage: ChatMessage = {
           id: assistantMessageId,
@@ -127,7 +133,6 @@ const Example = () => {
         setMessages((prev) => [...prev, assistantMessage])
         setStreamingMessageId(assistantMessageId)
 
-        // 调用后端API
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: {
@@ -147,7 +152,6 @@ const Example = () => {
 
         const data = await response.json()
 
-        // 更新AI消息
         setMessages((prev) =>
           prev.map((msg) => {
             if (msg.id === assistantMessageId) {
@@ -163,7 +167,6 @@ const Example = () => {
       } catch (err) {
         console.error('发送消息失败:', err)
         setError(err instanceof Error ? err.message : '发送消息时发生错误')
-        // 移除未完成的AI消息
         setMessages((prev) => prev.filter((msg) => !msg.isStreaming))
       } finally {
         setIsTyping(false)
@@ -179,10 +182,8 @@ const Example = () => {
 
       if (!inputValue.trim() || isTyping || !selectedModel) return
 
-      // 清除错误信息
       setError(null)
 
-      // 添加用户消息
       const userMessage: ChatMessage = {
         id: nanoid(),
         content: inputValue.trim(),
@@ -193,7 +194,6 @@ const Example = () => {
       setInputValue('')
       setIsTyping(true)
 
-      // 发送消息到后端
       sendMessage(userMessage)
     },
     [inputValue, isTyping, selectedModel, sendMessage],
@@ -227,7 +227,7 @@ const Example = () => {
               </div>
               <div className="h-4 w-px bg-border" />
               <span className="text-muted-foreground text-xs">
-                {models.find(m => m.id === selectedModel)?.name || '加载中...'}
+                {models.find((m) => m.id === selectedModel)?.name || '加载中...'}
               </span>
             </div>
             <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 px-2">
@@ -325,10 +325,7 @@ const Example = () => {
                     disabled={isTyping}
                   >
                     <PromptInputModelSelectTrigger>
-                      {/* 直接显示选中的模型名称 */}
-                      <span>
-                        {models.find(m => m.id === selectedModel)?.name || '选择模型'}
-                      </span>
+                      <PromptInputModelSelectValue />
                     </PromptInputModelSelectTrigger>
                     <PromptInputModelSelectContent>
                       {models.map((model) => (
